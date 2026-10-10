@@ -5,6 +5,7 @@ TESTS   = $(wildcard tests/test_*.c)
 UNITY   = third_party/unity/unity.c
 
 ifeq ($(OS),Windows_NT)
+	SHELL := cmd.exe
     MKDIR_BUILD = if not exist build mkdir build
     CLEAN_CMD = if exist build rmdir /s /q build & if exist app.exe del /q app.exe
 else
