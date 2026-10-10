@@ -6,45 +6,12 @@
 
 // Save a new record to the end of the file
 bool storage_save(const StudentRecord *record) {
-    if (record == NULL || record->roll_no[0] == '\0') {
-        return false;
-    }
-    FILE *file = fopen(DATA_FILE, "rb");
-    FILE *temp = fopen("temp.dat", "wb");
+    FILE *file = fopen(DATA_FILE, "ab");
+    if (!file) return false;
     
-    // Save failure is reported, never claimed as success
-    if (!temp) {
-        if (file) fclose(file);
-        return false; 
-    }
-
-    StudentRecord current;
-    if (file) {
-        while (fread(&current, sizeof(StudentRecord), 1, file) == 1) {
-            // Skip malformed lines on load (e.g., missing roll number)[cite: 9]
-            if (current.roll_no[0] != '\0') {
-                fwrite(&current, sizeof(StudentRecord), 1, temp);
-            }
-        }
-        fclose(file);
-    }
-
-    // Append the new record
-    if (fwrite(record, sizeof(StudentRecord), 1, temp) != 1) {
-        fclose(temp);
-        remove("temp.dat");
-        return false; 
-    }
-
-    // Force the OS to move data from RAM cache to the physical disk
-    fflush(temp); 
-    fclose(temp);
-
-    // Atomic swap: Interrupted write leaves the old file intact[cite: 9]
-    remove(DATA_FILE);
-    rename("temp.dat", DATA_FILE);
-    
-    return true;
+    size_t written = fwrite(record, sizeof(StudentRecord), 1, file);
+    fclose(file);
+    return written == 1;
 }
 
 // Find a record by its roll number
