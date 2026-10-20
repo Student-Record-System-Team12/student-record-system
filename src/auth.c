@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include "auth.h"
+#include "audit.h"
 #include "sha256.h"
 
 #ifdef _WIN32
@@ -20,21 +21,11 @@
 static User users[MAX_USERS];
 static int  user_count = 0;
 static char user_path[260] = "";
-static char log_path[260]  = "";
 
-/* Simple log hook. Replace with Mem 2's audit module once it is merged. */
+/* Security events go to the shared append-only audit log (STU-SR003). */
 static void log_event(const char *event, const char *username)
 {
-    FILE *f;
-    char ts[32];
-    time_t now = time(NULL);
-
-    if (log_path[0] == '\0') return;
-    f = fopen(log_path, "a");
-    if (!f) return;
-    strftime(ts, sizeof ts, "%Y-%m-%d %H:%M:%S", localtime(&now));
-    fprintf(f, "%s | AUTH | %s | %s\n", ts, username ? username : "-", event);
-    fclose(f);
+    audit_log_module("AUTH", username, event);
 }
 
 static int save_users(void)
@@ -77,7 +68,7 @@ int auth_init(const char *user_file, const char *log_file)
 
     if (!user_file || !log_file) return -1;
     snprintf(user_path, sizeof user_path, "%s", user_file);
-    snprintf(log_path, sizeof log_path, "%s", log_file);
+    if (audit_init(log_file) != 0) return -1;
     user_count = 0;
 
     f = fopen(user_path, "r");
