@@ -53,11 +53,24 @@ void test_TC_Rec_04_Duplicate_Roll_Number(void) {
     TEST_ASSERT_FALSE(add_student("admin1", &s2));
 }
 
+void test_TC_Rel_01_Interrupted_Write_Preserves_Data(void) {
+    StudentRecord s1 = {"CS999", "Reliability Test", "CSE", "555-0000"};
+    TEST_ASSERT_TRUE(add_student("admin1", &s1));
+
+    StudentRecord malformed = {"", "Bad Data", "CSE", "000"};
+    TEST_ASSERT_FALSE(add_student("admin1", &malformed));
+
+    StudentRecord retrieved;
+    TEST_ASSERT_TRUE(get_student("CS999", &retrieved));
+    TEST_ASSERT_EQUAL_STRING("Reliability Test", retrieved.name);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_TC_Rec_01_Add_And_Retrieve);
     RUN_TEST(test_TC_Rec_02_Update_Fields);
     RUN_TEST(test_TC_Rec_03_Delete_With_Confirmation);
     RUN_TEST(test_TC_Rec_04_Duplicate_Roll_Number);
+    RUN_TEST(test_TC_Rel_01_Interrupted_Write_Preserves_Data);
     return UNITY_END();
 }
