@@ -17,14 +17,14 @@ static GradeRec grades[MAX_GRADES];
 static int      grade_total = 0;
 static char     grade_path[260] = "";
 
-int validate_marks(int marks)
+int grade_marks_valid(int marks)
 {
     return marks >= MARKS_MIN && marks <= MARKS_MAX;
 }
 
 char calculate_grade(int marks)
 {
-    if (!validate_marks(marks)) return '\0';
+    if (!grade_marks_valid(marks)) return '\0';
     if (marks >= 90) return 'A';
     if (marks >= 80) return 'B';
     if (marks >= 70) return 'C';
@@ -85,7 +85,7 @@ int grade_init(const char *file)
         int  marks;
         if (sscanf(line, "%15[^,],%31[^,],%d,%c", roll, subj, &marks, &letter) != 4)
             continue;                       /* skip corrupted line */
-        if (!validate_marks(marks)) continue;
+        if (!grade_marks_valid(marks)) continue;
         strcpy(r.roll_no, roll);
         strcpy(r.subject, subj);
         r.marks  = marks;
@@ -102,7 +102,7 @@ GradeResult record_grade(const Session *s, const char *roll_no,
     GradeRec *r;
     if (!s || !auth_can_modify(s)) return GRADE_NOT_ADMIN;
     if (!valid_text(roll_no, ROLL_LEN) || !valid_text(subject, SUBJECT_LEN) ||
-        !validate_marks(marks)) return GRADE_INVALID_INPUT;
+        !grade_marks_valid(marks)) return GRADE_INVALID_INPUT;
     if (find_grade(roll_no, subject) >= 0) return GRADE_DUPLICATE;
     if (grade_total >= MAX_GRADES) return GRADE_FULL;
 
@@ -125,7 +125,7 @@ GradeResult update_grade(const Session *s, const char *roll_no,
     char old_letter;
     if (!s || !auth_can_modify(s)) return GRADE_NOT_ADMIN;
     if (!valid_text(roll_no, ROLL_LEN) || !valid_text(subject, SUBJECT_LEN) ||
-        !validate_marks(marks)) return GRADE_INVALID_INPUT;
+        !grade_marks_valid(marks)) return GRADE_INVALID_INPUT;
     i = find_grade(roll_no, subject);
     if (i < 0) return GRADE_NOT_FOUND;
 

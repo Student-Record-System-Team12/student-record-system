@@ -17,8 +17,7 @@ typedef enum {
 } GradeResult;
 
 /* STU-F020: returns 1 if marks is within 0..100, else 0. */
-int  validate_marks(int marks);
-
+int  grade_marks_valid(int marks);
 /* STU-F021: marks -> letter grade (A..F), per SAD 4.6 proposed scheme.
  * Returns '\0' if marks are invalid. */
 char calculate_grade(int marks);
