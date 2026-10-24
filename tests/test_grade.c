@@ -20,10 +20,10 @@ void tearDown(void) { remove(TMP_FILE); }
 /* --- validate_marks / calculate_grade --- */
 void test_validate_marks(void)
 {
-    TEST_ASSERT_TRUE(validate_marks(0));
-    TEST_ASSERT_TRUE(validate_marks(100));
-    TEST_ASSERT_FALSE(validate_marks(-1));
-    TEST_ASSERT_FALSE(validate_marks(101));
+        TEST_ASSERT_TRUE(grade_marks_valid(0));
+    TEST_ASSERT_TRUE(grade_marks_valid(100));
+    TEST_ASSERT_FALSE(grade_marks_valid(-1));
+    TEST_ASSERT_FALSE(grade_marks_valid(101));
 }
 
 void test_grade_boundaries(void)
