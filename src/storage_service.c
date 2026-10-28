@@ -109,3 +109,21 @@ bool storage_delete(const char *roll_no) {
     rename("temp.dat", DATA_FILE);
     return found;
 }
+
+int storage_list(StudentRecord *out, int max) {
+    if (!out || max <= 0) return 0;
+
+    FILE *file = fopen(DATA_FILE, "rb");
+    if (!file) return 0;
+
+    int n = 0;
+    StudentRecord temp;
+    while (n < max && fread(&temp, sizeof(StudentRecord), 1, file) == 1) {
+        if (temp.roll_no[0] != '\0') {
+            out[n++] = temp;
+        }
+    }
+
+    fclose(file);
+    return n;
+}

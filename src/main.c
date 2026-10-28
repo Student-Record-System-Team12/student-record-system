@@ -9,12 +9,15 @@
 #include "attendance.h"
 #include "audit.h"
 #include "auth.h"
+#include "grade.h"
 #include "record_service.h"
+#include "report.h"
 #include "validate.h"
 
 #define USERS_FILE      "users.dat"
 #define AUDIT_FILE      "audit.log"
 #define ATTENDANCE_FILE "attendance.csv"
+#define GRADES_FILE     "grades.csv"
 
 static int input_closed = 0;   /* set when stdin hits end-of-file */
 
@@ -206,6 +209,95 @@ static void do_create_login(void)
     memset(pass, 0, sizeof pass);
 }
 
+/* STU-F020/F022: record a grade, or update it if one already exists. */
+static void do_enter_grade(const Session *s)
+{
+    char roll[32], subject[48], marks_s[16];
+    int marks;
+    GradeResult r;
+
+    ask("Student roll number: ", roll, sizeof roll);
+    ask("Subject: ", subject, sizeof subject);
+    ask("Marks (0-100): ", marks_s, sizeof marks_s);
+
+    if (!validate_roll_no(roll) || !validate_text(subject, 31) ||
+        !validate_marks(marks_s, &marks)) {
+        printf("Invalid input. Nothing was saved.\n");
+        return;
+    }
+    {
+        StudentRecord rec;
+        if (!get_student(roll, &rec)) {
+            printf("No such student.\n");
+            return;
+        }
+    }
+
+    r = record_grade(s, roll, subject, marks);
+    if (r == GRADE_DUPLICATE)
+        r = update_grade(s, roll, subject, marks);
+
+    printf(r == GRADE_OK ? "Grade saved.\n" : "Could not save grade.\n");
+}
+
+/* STU-F040 */
+static void do_search(const Session *s)
+{
+    StudentRecord found[50];
+    char query[REPORT_QUERY_MAX + 8];
+    int count = 0;
+    ReportResult r;
+
+    ask("Search (roll number or name): ", query, sizeof query);
+    r = search_students(s, query, found, 50, &count);
+    if (r != REPORT_OK)
+        printf("%s\n", report_result_message(r));
+    else
+        report_print_students(stdout, found, count);
+}
+
+/* roll number for a report: admins type it, students use their own */
+static void pick_roll(const Session *s, int use_own_roll, char *roll, size_t size)
+{
+    if (use_own_roll)
+        snprintf(roll, size, "%s", s->roll_no);
+    else
+        ask("Student roll number: ", roll, size);
+}
+
+/* kind: 0 = grade sheet, 1 = attendance summary */
+static void do_report(const Session *s, int kind, int use_own_roll)
+{
+    char roll[32];
+    ReportResult r;
+
+    pick_roll(s, use_own_roll, roll, sizeof roll);
+    r = kind == 0 ? grade_sheet(s, roll, stdout)
+                  : attendance_summary(s, roll, stdout);
+    if (r != REPORT_OK)
+        printf("%s\n", report_result_message(r));
+}
+
+/* STU-F042 */
+static void do_export(const Session *s, int use_own_roll)
+{
+    char roll[32], path[96];
+    ReportResult r;
+
+    pick_roll(s, use_own_roll, roll, sizeof roll);
+    snprintf(path, sizeof path, "report_%s.csv", roll);
+
+    if (!validate_roll_no(roll)) {
+        printf("Invalid roll number.\n");
+        return;
+    }
+    r = export_report_csv(s, roll, path);
+    if (r == REPORT_OK)
+        printf("Exported to %s\n", path);
+    else
+        printf("%s\n", report_result_message(r));
+}
+
 static void admin_menu(Session *s)
 {
     while (!input_closed) {
@@ -216,6 +308,11 @@ static void admin_menu(Session *s)
         printf("4. Add student record\n");
         printf("5. View student record\n");
         printf("6. Create student login\n");
+        printf("7. Enter / update grade\n");
+        printf("8. Search students\n");
+        printf("9. Grade sheet\n");
+        printf("10. Attendance summary\n");
+        printf("11. Export report (CSV)\n");
         printf("0. Logout\n");
 
         switch (ask_choice()) {
@@ -226,7 +323,12 @@ static void admin_menu(Session *s)
         case 4: do_add_student(s); break;
         case 5: do_view_student(s, 0); break;
         case 6: do_create_login(); break;
-        default: printf("Invalid choice. Please select 0-6.\n");
+        case 7: do_enter_grade(s); break;
+        case 8: do_search(s); break;
+        case 9: do_report(s, 0, 0); break;
+        case 10: do_report(s, 1, 0); break;
+        case 11: do_export(s, 0); break;
+        default: printf("Invalid choice. Please select 0-11.\n");
         }
     }
 }
@@ -237,13 +339,19 @@ static void student_menu(Session *s)
         printf("\n--- Student menu (%s) ---\n", s->username);
         printf("1. View my record\n");
         printf("2. View my attendance\n");
+        printf("3. My grade sheet\n");
+        printf("4. My attendance summary\n");
+        printf("5. Export my report (CSV)\n");
         printf("0. Logout\n");
 
         switch (ask_choice()) {
         case 0: return;
         case 1: do_view_student(s, 1); break;
         case 2: do_view_attendance(s, 1); break;
-        default: printf("Invalid choice. Please select 0-2.\n");
+        case 3: do_report(s, 0, 1); break;
+        case 4: do_report(s, 1, 1); break;
+        case 5: do_export(s, 1); break;
+        default: printf("Invalid choice. Please select 0-5.\n");
         }
     }
 }
@@ -303,6 +411,11 @@ int main(void)
 
     if (attendance_init(ATTENDANCE_FILE) != ATT_OK) {
         printf("Error: cannot initialise attendance storage.\n");
+        return 1;
+    }
+
+    if (grade_init(GRADES_FILE) != 0) {
+        printf("Error: cannot load grades.\n");
         return 1;
     }
 
