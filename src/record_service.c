@@ -58,3 +58,7 @@ bool delete_student(const char *user, const char *roll_no) {
 bool get_student(const char *roll_no, StudentRecord *out_record) {
     return storage_load(roll_no, out_record);
 }
+
+int list_students(StudentRecord *out, int max) {
+    return storage_list(out, max);
+}

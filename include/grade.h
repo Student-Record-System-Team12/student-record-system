@@ -39,4 +39,15 @@ GradeResult get_grade(const char *roll_no, const char *subject,
 
 int  grade_count(void);
 
+/* STU-F041: one subject line of a grade sheet. */
+typedef struct {
+    char subject[32];
+    int  marks;
+    char letter;
+} GradeEntry;
+
+/* Copies up to max grades of one student (in entry order) into out.
+ * Returns the number copied; 0 for an unknown or invalid roll number. */
+int  grade_list_for(const char *roll_no, GradeEntry *out, int max);
+
 #endif

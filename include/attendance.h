@@ -49,6 +49,19 @@ AttResult calculate_percentage(const Session *session, const char *roll_no,
 /* Prints every record and a per-subject percentage. Students see only their own. */
 AttResult attendance_view_student(const Session *session, const char *roll_no);
 
+/* STU-F042: per-subject totals for one student. */
+typedef struct {
+    char   subject[ATT_SUBJECT_MAX];
+    int    present;
+    int    total;
+    double percent;           /* present / total * 100 */
+} AttSubjectSummary;
+
+/* Fills out with one entry per subject (order of first appearance, at most max).
+   *count receives the number of subjects. Students may only query their own roll number. */
+AttResult attendance_subject_summary(const Session *session, const char *roll_no,
+                                     AttSubjectSummary *out, int max, int *count);
+
 /* Human readable text for a result code, for the menu. */
 const char *attendance_result_message(AttResult r);
 

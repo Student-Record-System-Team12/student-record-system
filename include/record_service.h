@@ -15,4 +15,7 @@ bool update_student(const char *user, const StudentRecord *record);
 bool delete_student(const char *user, const char *roll_no);
 bool get_student(const char *roll_no, StudentRecord *out_record);
 
+/* STU-F040: up to max records, in file order. Returns the count. */
+int  list_students(StudentRecord *out, int max);
+
 #endif

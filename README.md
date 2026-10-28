@@ -11,6 +11,7 @@ A console application in C for managing student records, grades and attendance
 - Account lockout after 3 failed login attempts
 - Student records: add and view from the menu, with duplicate roll number check (update and delete are in the service layer)
 - Attendance: mark, update, view per student, percentage per subject
+- Search students by roll number or name (partial, case-insensitive), grade sheet, attendance summary (subjects under 75% flagged LOW), and per-student CSV export
 - Input validation for roll numbers, dates, marks, phone numbers and free text
 - Append-only audit log of security and data-changing events
 
@@ -41,11 +42,11 @@ username `admin`, password `admin123`. **Change this before any real use.**
 
 | Role | Menu options |
 |---|---|
-| Admin | Mark / update / view attendance, add / view student record, create student login |
-| Student | View own record, view own attendance |
+| Admin | Mark / update / view attendance, add / view student record, create student login, enter / update grade, search students, grade sheet, attendance summary, export report (CSV) |
+| Student | View own record, view own attendance, own grade sheet, own attendance summary, export own report (CSV) |
 
 Data files are created in the working directory: `users.dat`, `students.dat`,
-`attendance.csv`, `audit.log`. They are git-ignored.
+`grades.csv`, `attendance.csv`, `audit.log`. CSV exports are written as `report_<roll no>.csv`. They are git-ignored.
 
 ## Project layout
 

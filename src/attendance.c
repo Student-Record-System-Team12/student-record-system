@@ -384,3 +384,48 @@ AttResult attendance_view_student(const Session *session, const char *roll_no)
 
     return ATT_OK;
 }
+
+
+AttResult attendance_subject_summary(const Session *session, const char *roll_no,
+                                     AttSubjectSummary *out, int max, int *count)
+{
+    AttResult r;
+    int n = 0, i, j, found = 0;
+
+    if (out == NULL || count == NULL || max <= 0 || !validate_roll_no(roll_no))
+        return ATT_ERR_INVALID;
+
+    if (!auth_can_view_record(session, roll_no))
+        return ATT_ERR_PERMISSION;
+
+    r = load_all(&n);
+    if (r != ATT_OK)
+        return r;
+
+    *count = 0;
+
+    for (i = 0; i < n && found < max; i++) {
+        int seen = 0;
+
+        if (strcmp(rows[i].roll_no, roll_no) != 0)
+            continue;
+
+        for (j = 0; j < found; j++) {
+            if (strcmp(out[j].subject, rows[i].subject) == 0) {
+                seen = 1;
+                break;
+            }
+        }
+        if (seen)
+            continue;
+
+        snprintf(out[found].subject, sizeof out[found].subject, "%s", rows[i].subject);
+        count_rows(n, roll_no, rows[i].subject, &out[found].present, &out[found].total);
+        out[found].percent = (out[found].total == 0) ? 0.0
+                           : (out[found].present * 100.0) / out[found].total;
+        found++;
+    }
+
+    *count = found;
+    return ATT_OK;
+}

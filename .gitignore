@@ -32,3 +32,6 @@ attendance.csv.bak
 test_attendance_data.csv
 test_att_audit.log
 it_record_*
+grades.csv
+report_*.csv
+test_report_*

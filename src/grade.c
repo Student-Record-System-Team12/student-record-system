@@ -157,3 +157,17 @@ GradeResult get_grade(const char *roll_no, const char *subject,
 }
 
 int grade_count(void) { return grade_total; }
+
+int grade_list_for(const char *roll_no, GradeEntry *out, int max)
+{
+    int i, n = 0;
+    if (!out || max <= 0 || !valid_text(roll_no, ROLL_LEN)) return 0;
+    for (i = 0; i < grade_total && n < max; i++) {
+        if (strcmp(grades[i].roll_no, roll_no) != 0) continue;
+        strcpy(out[n].subject, grades[i].subject);
+        out[n].marks  = grades[i].marks;
+        out[n].letter = grades[i].letter;
+        n++;
+    }
+    return n;
+}
