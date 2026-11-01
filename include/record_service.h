@@ -2,6 +2,7 @@
 #define RECORD_SERVICE_H
 
 #include <stdbool.h>
+#include "auth.h"
 
 typedef struct {
     char roll_no[16];
@@ -10,9 +11,11 @@ typedef struct {
     char phone[16];
 } StudentRecord;
 
-bool add_student(const char *user, const StudentRecord *record);
-bool update_student(const char *user, const StudentRecord *record);
-bool delete_student(const char *user, const char *roll_no);
+/* STU-SR002: writes need a logged-in admin session. A NULL or student
+   session is rejected (returns false) and the attempt is audited. */
+bool add_student(const Session *s, const StudentRecord *record);
+bool update_student(const Session *s, const StudentRecord *record);
+bool delete_student(const Session *s, const char *roll_no);
 bool get_student(const char *roll_no, StudentRecord *out_record);
 
 /* STU-F040: up to max records, in file order. Returns the count. */

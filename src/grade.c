@@ -2,6 +2,7 @@
 #include <string.h>
 #include "grade.h"
 #include "audit.h"
+#include "fileperm.h"
 
 #define MAX_GRADES   1000
 #define ROLL_LEN     16
@@ -72,7 +73,8 @@ static int save_grades(void)
     for (i = 0; i < grade_total; i++)
         fprintf(f, "%s,%s,%d,%c\n", grades[i].roll_no, grades[i].subject,
                 grades[i].marks, grades[i].letter);
-    fclose(f);
+    if (fclose(f) != 0) return -1;
+    fileperm_restrict(grade_path);
     return 0;
 }
 

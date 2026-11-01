@@ -1,5 +1,8 @@
 #include "unity.h"
 #include "record_service.h"
+
+/* Issue #34: record writes now need an admin session */
+static const Session test_admin = { "admin1", ROLE_ADMIN, "-" };
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,7 +20,7 @@ void tearDown(void) {
 void test_TC_Rel_01_Crash_Recovery(void) {
     // 1. Establish a known good database state
     StudentRecord s1 = {"REL001", "Alice CrashTest", "CSE", "555-0001"};
-    TEST_ASSERT_TRUE(add_student("admin1", &s1));
+    TEST_ASSERT_TRUE(add_student(&test_admin, &s1));
 
     // 2. SIMULATE THE CRASH
     // We intentionally create a corrupted temp.dat file with half-written data.
@@ -34,7 +37,7 @@ void test_TC_Rel_01_Crash_Recovery(void) {
 
     // 4. Prove Self-Healing: Ensure the system can overwrite the abandoned temp file on the next save
     StudentRecord s2 = {"REL002", "Bob Survivor", "ECE", "555-0002"};
-    TEST_ASSERT_TRUE_MESSAGE(add_student("admin1", &s2), "System failed to recover and process new writes!");
+    TEST_ASSERT_TRUE_MESSAGE(add_student(&test_admin, &s2), "System failed to recover and process new writes!");
     
     TEST_ASSERT_TRUE(get_student("REL002", &retrieved));
     TEST_ASSERT_EQUAL_STRING("Bob Survivor", retrieved.name);

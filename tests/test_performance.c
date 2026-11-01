@@ -1,5 +1,8 @@
 #include "unity.h"
 #include "record_service.h"
+
+/* Issue #34: record writes now need an admin session */
+static const Session test_admin = { "admin1", ROLE_ADMIN, "-" };
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,7 +25,7 @@ void setUp(void) {
         sprintf(s.name, "Load Test %d", i);
         strcpy(s.dept, "CSE");
         strcpy(s.phone, "000-0000");
-        add_student("admin_perf", &s);
+        add_student(&test_admin, &s);
     }
 }
 

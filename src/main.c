@@ -8,6 +8,7 @@
 
 #include "attendance.h"
 #include "audit.h"
+#include "fileperm.h"
 #include "auth.h"
 #include "grade.h"
 #include "record_service.h"
@@ -151,7 +152,7 @@ static void do_add_student(const Session *s)
     copy_field(rec.dept, sizeof rec.dept, dept);
     copy_field(rec.phone, sizeof rec.phone, phone);
 
-    if (add_student(s->username, &rec))
+    if (add_student(s, &rec))
         printf("Student added.\n");
 }
 
@@ -397,6 +398,7 @@ int main(void)
     Session session;
 
     memset(&session, 0, sizeof session);
+    fileperm_init();   /* STU-SR005 */
 
     printf("================================\n");
     printf("     STUDENT RECORD SYSTEM\n");

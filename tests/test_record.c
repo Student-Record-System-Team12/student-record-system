@@ -1,5 +1,8 @@
 #include "unity.h"
 #include "record_service.h"
+
+/* Issue #34: record writes now need an admin session */
+static const Session test_admin = { "admin1", ROLE_ADMIN, "-" };
 #include "storage_service.h"
 #include <stdio.h>
 #include <string.h>
@@ -16,7 +19,7 @@ void tearDown(void) {
 
 void test_TC_Rec_01_Add_And_Retrieve(void) {
     StudentRecord s = {"CS101", "John Doe", "CSE", "555-0101"};
-    TEST_ASSERT_TRUE(add_student("admin1", &s));
+    TEST_ASSERT_TRUE(add_student(&test_admin, &s));
 
     StudentRecord retrieved;
     TEST_ASSERT_TRUE(get_student("CS101", &retrieved));
@@ -25,10 +28,10 @@ void test_TC_Rec_01_Add_And_Retrieve(void) {
 
 void test_TC_Rec_02_Update_Fields(void) {
     StudentRecord s = {"CS101", "John Doe", "CSE", "555-0101"};
-    add_student("admin1", &s);
+    add_student(&test_admin, &s);
 
     StudentRecord updated = {"CS101", "John Smith", "CSE", "555-0199"};
-    TEST_ASSERT_TRUE(update_student("admin1", &updated));
+    TEST_ASSERT_TRUE(update_student(&test_admin, &updated));
 
     StudentRecord retrieved;
     TEST_ASSERT_TRUE(get_student("CS101", &retrieved));
@@ -37,9 +40,9 @@ void test_TC_Rec_02_Update_Fields(void) {
 
 void test_TC_Rec_03_Delete_With_Confirmation(void) {
     StudentRecord s = {"CS101", "John Doe", "CSE", "555-0101"};
-    add_student("admin1", &s);
+    add_student(&test_admin, &s);
 
-    TEST_ASSERT_TRUE(delete_student("admin1", "CS101"));
+    TEST_ASSERT_TRUE(delete_student(&test_admin, "CS101"));
 
     StudentRecord retrieved;
     TEST_ASSERT_FALSE(get_student("CS101", &retrieved));
@@ -47,18 +50,18 @@ void test_TC_Rec_03_Delete_With_Confirmation(void) {
 
 void test_TC_Rec_04_Duplicate_Roll_Number(void) {
     StudentRecord s1 = {"CS102", "Alice", "ECE", "555-0102"};
-    TEST_ASSERT_TRUE(add_student("admin1", &s1));
+    TEST_ASSERT_TRUE(add_student(&test_admin, &s1));
 
     StudentRecord s2 = {"CS102", "Bob", "ECE", "555-0103"};
-    TEST_ASSERT_FALSE(add_student("admin1", &s2));
+    TEST_ASSERT_FALSE(add_student(&test_admin, &s2));
 }
 
 void test_TC_Rel_01_Interrupted_Write_Preserves_Data(void) {
     StudentRecord s1 = {"CS999", "Reliability Test", "CSE", "555-0000"};
-    TEST_ASSERT_TRUE(add_student("admin1", &s1));
+    TEST_ASSERT_TRUE(add_student(&test_admin, &s1));
 
     StudentRecord malformed = {"", "Bad Data", "CSE", "000"};
-    TEST_ASSERT_FALSE(add_student("admin1", &malformed));
+    TEST_ASSERT_FALSE(add_student(&test_admin, &malformed));
 
     StudentRecord retrieved;
     TEST_ASSERT_TRUE(get_student("CS999", &retrieved));

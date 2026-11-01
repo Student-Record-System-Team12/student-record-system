@@ -2,6 +2,7 @@
 #include <string.h>
 #include <time.h>
 #include "audit.h"
+#include "fileperm.h"
 
 #define AUDIT_PATH_MAX   260
 #define AUDIT_FIELD_MAX  128
@@ -48,7 +49,9 @@ int audit_log_module(const char *module, const char *user, const char *action)
     if (!f) return -1;
     strftime(ts, sizeof ts, "%Y-%m-%d %H:%M:%S", localtime(&now));
     if (fprintf(f, "%s | %s | %s | %s\n", ts, m, u, a) < 0) { fclose(f); return -1; }
-    return fclose(f) == 0 ? 0 : -1;
+    if (fclose(f) != 0) return -1;
+    fileperm_restrict(log_path);
+    return 0;
 }
 
 int audit_log(const char *user, const char *action)
