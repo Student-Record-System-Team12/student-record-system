@@ -5,6 +5,7 @@
 #include <time.h>
 #include "auth.h"
 #include "audit.h"
+#include "storage_service.h"
 #include "sha256.h"
 
 #ifdef _WIN32
@@ -28,18 +29,10 @@ static void log_event(const char *event, const char *username)
     audit_log_module("AUTH", username, event);
 }
 
+/* Issue #33: persistence goes through StorageService, not direct file I/O. */
 static int save_users(void)
 {
-    int i;
-    FILE *f = fopen(user_path, "w");
-    if (!f) return -1;
-    for (i = 0; i < user_count; i++) {
-        fprintf(f, "%s,%s,%d,%s,%d,%d\n",
-                users[i].username, users[i].password_hash, (int)users[i].role,
-                users[i].roll_no, users[i].failed_attempts, users[i].locked);
-    }
-    fclose(f);
-    return 0;
+    return storage_save_users(user_path, users, user_count) ? 0 : -1;
 }
 
 static int find_user(const char *username)
@@ -63,31 +56,15 @@ static int valid_field(const char *s, size_t max_len)
 
 int auth_init(const char *user_file, const char *log_file)
 {
-    FILE *f;
-    char line[256];
+    int n;
 
     if (!user_file || !log_file) return -1;
     snprintf(user_path, sizeof user_path, "%s", user_file);
     if (audit_init(log_file) != 0) return -1;
-    user_count = 0;
 
-    f = fopen(user_path, "r");
-    if (!f) return 0;   /* no file yet: empty user list */
-
-    while (user_count < MAX_USERS && fgets(line, sizeof line, f)) {
-        User u;
-        int role, failed, locked;
-        memset(&u, 0, sizeof u);
-        if (sscanf(line, "%31[^,],%64[^,],%d,%15[^,],%d,%d",
-                   u.username, u.password_hash, &role, u.roll_no,
-                   &failed, &locked) == 6) {
-            u.role = (role == ROLE_ADMIN) ? ROLE_ADMIN : ROLE_STUDENT;
-            u.failed_attempts = failed;
-            u.locked = locked ? 1 : 0;
-            users[user_count++] = u;
-        }
-    }
-    fclose(f);
+    n = storage_load_users(user_path, users, MAX_USERS);
+    if (n < 0) { user_count = 0; return -1; }
+    user_count = n;
     return 0;
 }
 

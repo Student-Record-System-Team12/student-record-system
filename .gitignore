@@ -35,3 +35,6 @@ it_record_*
 grades.csv
 report_*.csv
 test_report_*
+tsec_users.dat
+users.dat.tmp
+*.dat.tmp
