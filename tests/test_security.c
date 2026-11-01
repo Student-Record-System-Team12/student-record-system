@@ -1,16 +1,37 @@
 #include "unity.h"
 #include "record_service.h"
+#include "auth.h"
 #include <stdio.h>
 #include <string.h>
+
+#define SEC_USERS "tsec_users.dat"
+#define SEC_LOG   "tsec_audit.log"
+
+/* returns 1 if needle appears anywhere in the file */
+static int file_contains(const char *path, const char *needle)
+{
+    char line[512];
+    int found = 0;
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    while (!found && fgets(line, sizeof line, f))
+        if (strstr(line, needle)) found = 1;
+    fclose(f);
+    return found;
+}
 
 void setUp(void) {
     remove("students.dat");
     remove("temp.dat");
+    remove(SEC_USERS);
+    remove(SEC_LOG);
 }
 
 void tearDown(void) {
     remove("students.dat");
     remove("temp.dat");
+    remove(SEC_USERS);
+    remove(SEC_LOG);
 }
 
 void test_TC_Sec_01_Checklist_Null_Session_Rejected(void) {
@@ -28,8 +49,14 @@ void test_TC_Sec_01_Checklist_Null_Session_Rejected(void) {
 }
 
 void test_TC_Sec_02_Hashing_No_Plaintext(void) {
-    // Documented Defect: Dev Lead still integrating Auth hashing (Issue #33)
-    TEST_IGNORE_MESSAGE("Defect Documented: Awaiting Dev Lead Auth Integration (Issue #33) to verify hash masking.");
+    /* Issue #33: users are stored through StorageService as SHA-256 hashes only */
+    char hash[65];
+    TEST_ASSERT_EQUAL_INT(0, auth_init(SEC_USERS, SEC_LOG));
+    TEST_ASSERT_EQUAL_INT(0, auth_add_user("secuser", "S3cret@Pass", ROLE_STUDENT, "PES900"));
+
+    auth_hash_password("S3cret@Pass", hash);
+    TEST_ASSERT_FALSE(file_contains(SEC_USERS, "S3cret@Pass"));
+    TEST_ASSERT_TRUE(file_contains(SEC_USERS, hash));
 }
 
 void test_TC_Sec_03_Write_Restriction_Admin_Only(void) {
@@ -38,8 +65,16 @@ void test_TC_Sec_03_Write_Restriction_Admin_Only(void) {
 }
 
 void test_TC_Sec_04_Audit_Unauthorized_Access_Logged(void) {
-    // Documented Defect: Dev Lead integrating Auth with Audit (Issue #33)
-    TEST_IGNORE_MESSAGE("Defect Documented: Awaiting Dev Lead Auth/Audit integration to verify failed attempts are logged.");
+    /* Issue #33: Auth writes security events through AuditService */
+    Session s;
+    TEST_ASSERT_EQUAL_INT(0, auth_init(SEC_USERS, SEC_LOG));
+    TEST_ASSERT_EQUAL_INT(0, auth_add_user("secuser", "S3cret@Pass", ROLE_STUDENT, "PES900"));
+
+    TEST_ASSERT_EQUAL_INT(AUTH_BAD_CREDENTIALS, auth_login("secuser", "wrong", &s));
+    TEST_ASSERT_EQUAL_INT(AUTH_NO_SUCH_USER, auth_login("ghost", "whatever", &s));
+
+    TEST_ASSERT_TRUE(file_contains(SEC_LOG, "| AUTH | secuser | LOGIN_FAILED"));
+    TEST_ASSERT_TRUE(file_contains(SEC_LOG, "| AUTH | ghost | LOGIN_FAILED_UNKNOWN_USER"));
 }
 
 void test_TC_Sec_05_Validation_Injection_Rejection(void) {

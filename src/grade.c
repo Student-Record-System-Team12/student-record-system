@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "grade.h"
+#include "audit.h"
 
 #define MAX_GRADES   1000
 #define ROLL_LEN     16
@@ -50,6 +51,15 @@ static int find_grade(const char *roll_no, const char *subject)
         if (strcmp(grades[i].roll_no, roll_no) == 0 &&
             strcmp(grades[i].subject, subject) == 0) return i;
     return -1;
+}
+
+/* STU-SR003: every grade change goes to the shared audit log */
+static void log_grade_event(const Session *s, const char *what,
+                            const char *roll_no, const char *subject)
+{
+    char action[96];
+    snprintf(action, sizeof action, "%s:%s:%s", what, roll_no, subject);
+    audit_log_module("GRADES", s->username, action);
 }
 
 static int save_grades(void)
@@ -114,7 +124,7 @@ GradeResult record_grade(const Session *s, const char *roll_no,
     grade_total++;
 
     if (save_grades() != 0) { grade_total--; return GRADE_IO_ERROR; }
-    /* TODO: call audit_log() here once Mem 2's audit module is merged */
+    log_grade_event(s, "RECORD_GRADE", roll_no, subject);
     return GRADE_OK;
 }
 
@@ -139,7 +149,7 @@ GradeResult update_grade(const Session *s, const char *roll_no,
         grades[i].letter = old_letter;
         return GRADE_IO_ERROR;
     }
-    /* TODO: call audit_log() here once Mem 2's audit module is merged */
+    log_grade_event(s, "UPDATE_GRADE", roll_no, subject);
     return GRADE_OK;
 }
 

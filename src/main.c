@@ -402,11 +402,11 @@ int main(void)
     printf("     STUDENT RECORD SYSTEM\n");
     printf("================================\n");
 
+    /* auth_init also initialises AuditService with AUDIT_FILE */
     if (auth_init(USERS_FILE, AUDIT_FILE) != 0) {
         printf("Error: cannot load users.\n");
         return 1;
     }
-    audit_init(AUDIT_FILE);
     auth_ensure_default_admin();
 
     if (attendance_init(ATTENDANCE_FILE) != ATT_OK) {

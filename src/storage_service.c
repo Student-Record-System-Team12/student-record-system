@@ -127,3 +127,54 @@ int storage_list(StudentRecord *out, int max) {
     fclose(file);
     return n;
 }
+
+/* ---------- Issue #33: user table storage (used by Auth) ---------- */
+
+int storage_load_users(const char *path, User *out, int max) {
+    if (!path || path[0] == '\0' || !out || max <= 0) return -1;
+
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;   /* no file yet: empty user list */
+
+    char line[256];
+    int n = 0;
+    while (n < max && fgets(line, sizeof line, f)) {
+        User u;
+        int role, failed, locked;
+        memset(&u, 0, sizeof u);
+        if (sscanf(line, "%31[^,],%64[^,],%d,%15[^,],%d,%d",
+                   u.username, u.password_hash, &role, u.roll_no,
+                   &failed, &locked) == 6) {
+            u.role = (role == ROLE_ADMIN) ? ROLE_ADMIN : ROLE_STUDENT;
+            u.failed_attempts = failed;
+            u.locked = locked ? 1 : 0;
+            out[n++] = u;
+        }
+    }
+    fclose(f);
+    return n;
+}
+
+bool storage_save_users(const char *path, const User *users, int count) {
+    char tmp[300];
+    if (!path || path[0] == '\0' || count < 0 || (count > 0 && !users)) return false;
+    if (snprintf(tmp, sizeof tmp, "%s.tmp", path) >= (int)sizeof tmp) return false;
+
+    FILE *f = fopen(tmp, "w");
+    if (!f) return false;
+
+    for (int i = 0; i < count; i++) {
+        if (fprintf(f, "%s,%s,%d,%s,%d,%d\n",
+                    users[i].username, users[i].password_hash, (int)users[i].role,
+                    users[i].roll_no, users[i].failed_attempts, users[i].locked) < 0) {
+            fclose(f);
+            remove(tmp);
+            return false;
+        }
+    }
+    if (fclose(f) != 0) { remove(tmp); return false; }
+
+    remove(path);                       /* Windows rename() fails if the target exists */
+    if (rename(tmp, path) != 0) { remove(tmp); return false; }
+    return true;
+}
