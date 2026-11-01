@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "report.h"
+#include "fileperm.h"
 #include "attendance.h"
 #include "audit.h"
 #include "grade.h"
@@ -269,6 +270,7 @@ ReportResult export_report_csv(const Session *session, const char *roll_no, cons
         remove(path);
         return REPORT_ERR_IO;
     }
+    fileperm_restrict(path);
 
     snprintf(action, sizeof action, "EXPORT_CSV roll=%s file=%s", roll_no, path);
     audit_log_module("REPORT", session->username, action);

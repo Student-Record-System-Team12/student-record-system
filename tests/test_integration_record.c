@@ -94,7 +94,7 @@ void test_TC_Int_01_Add_Student_Then_Write_Updates_Storage_And_Audit(void)
 {
     StudentRecord s = {"PES001", "Asha Rao", "CSE", "9876543210"};
 
-    TEST_ASSERT_TRUE(add_student("admin", &s));
+    TEST_ASSERT_TRUE(add_student(&admin_session, &s));
     TEST_ASSERT_TRUE(storage_file_has_roll("PES001"));
 
     TEST_ASSERT_EQUAL_INT(ATT_OK, mark_attendance(&admin_session, "PES001", "Maths",
@@ -121,7 +121,7 @@ void test_TC_Int_02_Write_For_Unknown_Student_Rejected(void)
 void test_TC_Int_03_Non_Admin_Write_Rejected(void)
 {
     StudentRecord s = {"PES001", "Asha Rao", "CSE", "9876543210"};
-    TEST_ASSERT_TRUE(add_student("admin", &s));
+    TEST_ASSERT_TRUE(add_student(&admin_session, &s));
     TEST_ASSERT_EQUAL_INT(1, count_lines(IT_AUDIT_LOG));   /* only the add */
 
     TEST_ASSERT_EQUAL_INT(0, auth_can_modify(&student_session));
@@ -140,12 +140,12 @@ void test_TC_Int_04_Update_And_Delete_Are_Stored_And_Audited(void)
     StudentRecord upd = {"PES001", "Asha R",   "ECE", "9876543211"};
     StudentRecord out;
 
-    TEST_ASSERT_TRUE(add_student("admin", &s));
-    TEST_ASSERT_TRUE(update_student("admin", &upd));
+    TEST_ASSERT_TRUE(add_student(&admin_session, &s));
+    TEST_ASSERT_TRUE(update_student(&admin_session, &upd));
     TEST_ASSERT_TRUE(get_student("PES001", &out));
     TEST_ASSERT_EQUAL_STRING("Asha R", out.name);
 
-    TEST_ASSERT_TRUE(delete_student("admin", "PES001"));
+    TEST_ASSERT_TRUE(delete_student(&admin_session, "PES001"));
     TEST_ASSERT_FALSE(storage_file_has_roll("PES001"));
 
     TEST_ASSERT_EQUAL_INT(3, count_lines(IT_AUDIT_LOG));
@@ -161,8 +161,8 @@ void test_TC_Int_05_Duplicate_Add_Not_Logged(void)
     StudentRecord s2 = {"PES001", "Someone Else", "ECE", "9000000000"};
     StudentRecord out;
 
-    TEST_ASSERT_TRUE(add_student("admin", &s1));
-    TEST_ASSERT_FALSE(add_student("admin", &s2));
+    TEST_ASSERT_TRUE(add_student(&admin_session, &s1));
+    TEST_ASSERT_FALSE(add_student(&admin_session, &s2));
 
     TEST_ASSERT_TRUE(get_student("PES001", &out));
     TEST_ASSERT_EQUAL_STRING("Asha Rao", out.name);
@@ -173,8 +173,8 @@ void test_TC_Int_05_Duplicate_Add_Not_Logged(void)
 void test_TC_Int_06_Write_After_Delete_Rejected(void)
 {
     StudentRecord s = {"PES001", "Asha Rao", "CSE", "9876543210"};
-    TEST_ASSERT_TRUE(add_student("admin", &s));
-    TEST_ASSERT_TRUE(delete_student("admin", "PES001"));
+    TEST_ASSERT_TRUE(add_student(&admin_session, &s));
+    TEST_ASSERT_TRUE(delete_student(&admin_session, "PES001"));
 
     TEST_ASSERT_EQUAL_INT(ATT_ERR_UNKNOWN_STUDENT,
                           mark_attendance(&admin_session, "PES001", "Maths",

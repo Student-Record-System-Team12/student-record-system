@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "attendance.h"
+#include "fileperm.h"
 #include "audit.h"
 #include "record_service.h"
 #include "validate.h"
@@ -148,6 +149,7 @@ static AttResult save_all(int count)
         remove(tmp);
         return ATT_ERR_IO;
     }
+    fileperm_restrict(att_path);
 
     remove(bak);
     return ATT_OK;
@@ -202,6 +204,7 @@ AttResult attendance_init(const char *file_path)
     if (fclose(f) != 0)
         return ATT_ERR_IO;
 
+    fileperm_restrict(file_path);
     snprintf(att_path, sizeof att_path, "%s", file_path);
     return ATT_OK;
 }
@@ -244,6 +247,7 @@ AttResult mark_attendance(const Session *session, const char *roll_no,
     if (fclose(f) != 0)
         return ATT_ERR_IO;
 
+    fileperm_restrict(att_path);
     log_write(session, "MARK", roll_no, subject, date, (int)status);
     return ATT_OK;
 }

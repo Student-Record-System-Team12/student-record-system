@@ -5,7 +5,16 @@
 #include "storage_service.h"
 #include "audit.h"
 
-bool add_student(const char *user, const StudentRecord *record) {
+/* STU-SR002: only an admin session may write. Denied attempts are audited. */
+static bool admin_write_allowed(const Session *s, const char *what)
+{
+    if (s && s->username[0] != '\0' && auth_can_modify(s)) return true;
+    audit_log_module("STUDENT", (s && s->username[0]) ? s->username : "-", what);
+    return false;
+}
+
+bool add_student(const Session *s, const StudentRecord *record) {
+    if (!admin_write_allowed(s, "DENIED_ADD_STUDENT")) return false;
     if (!record || record->roll_no[0] == '\0') {
         return false;
     }
@@ -20,13 +29,14 @@ bool add_student(const char *user, const StudentRecord *record) {
     if (storage_save(record)) {
         char action[128];
         snprintf(action, sizeof(action), "ADD_STUDENT:%s", record->roll_no);
-        audit_log(user, action);
+        audit_log(s->username, action);
         return true;
     }
     return false;
 }
 
-bool update_student(const char *user, const StudentRecord *record) {
+bool update_student(const Session *s, const StudentRecord *record) {
+    if (!admin_write_allowed(s, "DENIED_UPDATE_STUDENT")) return false;
     if (!record || record->roll_no[0] == '\0') return false;
     
     StudentRecord existing;
@@ -37,19 +47,20 @@ bool update_student(const char *user, const StudentRecord *record) {
     if (storage_update(record)) {
         char action[128];
         snprintf(action, sizeof(action), "UPDATE_STUDENT:%s", record->roll_no);
-        audit_log(user, action);
+        audit_log(s->username, action);
         return true;
     }
     return false;
 }
 
-bool delete_student(const char *user, const char *roll_no) {
+bool delete_student(const Session *s, const char *roll_no) {
+    if (!admin_write_allowed(s, "DENIED_DELETE_STUDENT")) return false;
     if (!roll_no || roll_no[0] == '\0') return false;
     
     if (storage_delete(roll_no)) {
         char action[128];
         snprintf(action, sizeof(action), "DELETE_STUDENT:%s", roll_no);
-        audit_log(user, action);
+        audit_log(s->username, action);
         return true;
     }
     return false;

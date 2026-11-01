@@ -76,12 +76,12 @@ void setUp(void)
     attendance_init(ATT_FILE);
     grade_init(NULL);                       /* in-memory, empty */
 
-    add_student("admin", &a);
-    add_student("admin", &b);
-    add_student("admin", &c);
-
     memset(&admin, 0, sizeof admin);
     admin.role = ROLE_ADMIN; strcpy(admin.username, "admin"); strcpy(admin.roll_no, "-");
+
+    add_student(&admin, &a);
+    add_student(&admin, &b);
+    add_student(&admin, &c);
     memset(&stud1, 0, sizeof stud1);
     stud1.role = ROLE_STUDENT; strcpy(stud1.username, "s1"); strcpy(stud1.roll_no, "PES001");
     memset(&stud2, 0, sizeof stud2);
@@ -275,7 +275,7 @@ void test_TC_Rpt_16_Csv_Neutralises_Formula_Cells(void)
 {
     StudentRecord evil = {"PES004", "=cmd|calc", "CSE", "9876522222"};
 
-    add_student("admin", &evil);
+    add_student(&admin, &evil);
     record_grade(&admin, "PES004", "Maths", 50);
 
     TEST_ASSERT_EQUAL_INT(REPORT_OK, export_report_csv(&admin, "PES004", CSV_FILE));
@@ -298,7 +298,7 @@ void test_TC_Rpt_19_Csv_Quotes_Names_With_Commas(void)
 {
     StudentRecord comma = {"PES005", "Rao, Asha \"AR\"", "CSE", "9876533333"};
 
-    add_student("admin", &comma);
+    add_student(&admin, &comma);
     record_grade(&admin, "PES005", "Maths", 72);
 
     TEST_ASSERT_EQUAL_INT(REPORT_OK, export_report_csv(&admin, "PES005", CSV_FILE));

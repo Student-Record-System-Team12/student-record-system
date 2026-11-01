@@ -1,11 +1,20 @@
 #include "unity.h"
 #include "record_service.h"
 #include "auth.h"
+#include "audit.h"
+#include "attendance.h"
+#include "grade.h"
+#include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
 
 #define SEC_USERS "tsec_users.dat"
 #define SEC_LOG   "tsec_audit.log"
+#define SEC_ATT   "tsec_att.csv"
+#define SEC_GRADE "tsec_grades.csv"
+
+static const Session sec_admin   = { "admin1", ROLE_ADMIN,   "-" };
+static const Session sec_student = { "stud1",  ROLE_STUDENT, "SEC001" };
 
 /* returns 1 if needle appears anywhere in the file */
 static int file_contains(const char *path, const char *needle)
@@ -25,6 +34,8 @@ void setUp(void) {
     remove("temp.dat");
     remove(SEC_USERS);
     remove(SEC_LOG);
+    remove(SEC_ATT);
+    remove(SEC_GRADE);
 }
 
 void tearDown(void) {
@@ -32,20 +43,20 @@ void tearDown(void) {
     remove("temp.dat");
     remove(SEC_USERS);
     remove(SEC_LOG);
+    remove(SEC_ATT);
+    remove(SEC_GRADE);
 }
 
 void test_TC_Sec_01_Checklist_Null_Session_Rejected(void) {
     // Proves that attempting to write without a valid user string is blocked
     StudentRecord s = {"SEC001", "Hacker", "CSE", "555-0000"};
     
-    bool result = add_student("", &s);
-    
-    if (result == true) {
-        // The system has a bug and allowed the write! We document the defect here.
-        TEST_IGNORE_MESSAGE("Defect Documented: record_service.c allows writes with empty session tokens. Needs patching.");
-    } else {
-        TEST_ASSERT_FALSE(result);
-    }
+    Session empty;
+    memset(&empty, 0, sizeof empty);
+
+    /* Issue #34: no session, or an empty one, cannot write */
+    TEST_ASSERT_FALSE(add_student(NULL, &s));
+    TEST_ASSERT_FALSE(add_student(&empty, &s));
 }
 
 void test_TC_Sec_02_Hashing_No_Plaintext(void) {
@@ -60,8 +71,31 @@ void test_TC_Sec_02_Hashing_No_Plaintext(void) {
 }
 
 void test_TC_Sec_03_Write_Restriction_Admin_Only(void) {
-    // Documented Defect: Dev Lead is still building admin-only checks (Issue #34)
-    TEST_IGNORE_MESSAGE("Defect Documented: Awaiting Dev Lead Admin-only writes (Issue #34) to verify role enforcement.");
+    /* Issue #34 / STU-SR002: a student session cannot write records, grades or attendance */
+    StudentRecord rec = {"SEC001", "Asha", "CSE", "9876543210"};
+    StudentRecord changed = {"SEC001", "Changed", "CSE", "9876543210"};
+    StudentRecord loaded;
+
+    TEST_ASSERT_EQUAL_INT(0, audit_init(SEC_LOG));
+    TEST_ASSERT_EQUAL_INT(ATT_OK, attendance_init(SEC_ATT));
+    TEST_ASSERT_EQUAL_INT(0, grade_init(SEC_GRADE));
+    TEST_ASSERT_TRUE(add_student(&sec_admin, &rec));
+
+    TEST_ASSERT_FALSE(add_student(&sec_student, &changed));
+    TEST_ASSERT_FALSE(update_student(&sec_student, &changed));
+    TEST_ASSERT_FALSE(delete_student(&sec_student, "SEC001"));
+    TEST_ASSERT_TRUE(get_student("SEC001", &loaded));
+    TEST_ASSERT_EQUAL_STRING("Asha", loaded.name);
+
+    TEST_ASSERT_EQUAL_INT(GRADE_NOT_ADMIN, record_grade(&sec_student, "SEC001", "Maths", 90));
+    TEST_ASSERT_EQUAL_INT(ATT_ERR_PERMISSION,
+        mark_attendance(&sec_student, "SEC001", "Maths", "2026-10-30", ATT_PRESENT));
+
+    /* the admin can still do all of it */
+    TEST_ASSERT_EQUAL_INT(GRADE_OK, record_grade(&sec_admin, "SEC001", "Maths", 90));
+    TEST_ASSERT_EQUAL_INT(ATT_OK,
+        mark_attendance(&sec_admin, "SEC001", "Maths", "2026-10-30", ATT_PRESENT));
+    TEST_ASSERT_TRUE(update_student(&sec_admin, &changed));
 }
 
 void test_TC_Sec_04_Audit_Unauthorized_Access_Logged(void) {
@@ -83,7 +117,7 @@ void test_TC_Sec_05_Validation_Injection_Rejection(void) {
     
     // This currently passes because we rely on the Product Owner's validation layer, 
     // but the backend storage should ideally catch it too. If this fails, it's a valid defect!
-    bool result = add_student("admin1", &s);
+    bool result = add_student(&sec_admin, &s);
     if (result) {
         TEST_IGNORE_MESSAGE("Defect Documented: Backend storage allows injection characters. Awaiting PO Validation Layer Integration.");
     } else {
@@ -92,8 +126,29 @@ void test_TC_Sec_05_Validation_Injection_Rejection(void) {
 }
 
 void test_TC_Sec_06_File_Permissions(void) {
-    // Documented Defect: Dev Lead building file permission locks (Issue #34)
-    TEST_IGNORE_MESSAGE("Defect Documented: Awaiting Dev Lead File Permission implementation (Issue #34).");
+#ifdef _WIN32
+    TEST_IGNORE_MESSAGE("TC-Sec-06 checks POSIX permission bits; on Windows files inherit the user folder's NTFS ACL.");
+#else
+    /* Issue #34 / STU-SR005: every data file is owner read/write only */
+    const char *files[] = { "students.dat", SEC_USERS, SEC_LOG, SEC_ATT, SEC_GRADE };
+    StudentRecord rec = {"SEC001", "Asha", "CSE", "9876543210"};
+    struct stat st;
+    size_t i;
+
+    TEST_ASSERT_EQUAL_INT(0, auth_init(SEC_USERS, SEC_LOG));   /* also sets the audit log */
+    TEST_ASSERT_EQUAL_INT(0, auth_add_user("secuser", "S3cret@Pass", ROLE_STUDENT, "SEC001"));
+    TEST_ASSERT_EQUAL_INT(ATT_OK, attendance_init(SEC_ATT));
+    TEST_ASSERT_EQUAL_INT(0, grade_init(SEC_GRADE));
+    TEST_ASSERT_TRUE(add_student(&sec_admin, &rec));
+    TEST_ASSERT_EQUAL_INT(GRADE_OK, record_grade(&sec_admin, "SEC001", "Maths", 90));
+    TEST_ASSERT_EQUAL_INT(ATT_OK,
+        mark_attendance(&sec_admin, "SEC001", "Maths", "2026-10-30", ATT_PRESENT));
+
+    for (i = 0; i < sizeof files / sizeof files[0]; i++) {
+        TEST_ASSERT_EQUAL_INT_MESSAGE(0, stat(files[i], &st), files[i]);
+        TEST_ASSERT_EQUAL_INT_MESSAGE(0, (int)(st.st_mode & (S_IRWXG | S_IRWXO)), files[i]);
+    }
+#endif
 }
 
 int main(void) {

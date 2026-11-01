@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "storage_service.h"
+#include "fileperm.h"
 
 #define DATA_FILE "students.dat"
 
@@ -39,6 +40,7 @@ bool storage_save(const StudentRecord *record) {
 
     remove(DATA_FILE);
     rename("temp.dat", DATA_FILE);
+    fileperm_restrict(DATA_FILE);
     return true;
 }
 
@@ -73,6 +75,7 @@ bool storage_update(const StudentRecord *record) {
             fseek(file, -(long)sizeof(StudentRecord), SEEK_CUR);
             fwrite(record, sizeof(StudentRecord), 1, file);
             fclose(file);
+            fileperm_restrict(DATA_FILE);
             return true;
         }
     }
@@ -107,6 +110,7 @@ bool storage_delete(const char *roll_no) {
     fclose(temp_file);
     remove(DATA_FILE);
     rename("temp.dat", DATA_FILE);
+    fileperm_restrict(DATA_FILE);
     return found;
 }
 
@@ -176,5 +180,6 @@ bool storage_save_users(const char *path, const User *users, int count) {
 
     remove(path);                       /* Windows rename() fails if the target exists */
     if (rename(tmp, path) != 0) { remove(tmp); return false; }
+    fileperm_restrict(path);
     return true;
 }

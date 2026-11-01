@@ -38,3 +38,5 @@ test_report_*
 tsec_users.dat
 users.dat.tmp
 *.dat.tmp
+tsec_att.csv
+tsec_grades.csv
